@@ -30,7 +30,7 @@ data "aws_ami" "ubuntu_2404" {
 # ---------- EC2-1: Jenkins ----------
 resource "aws_instance" "jenkins" {
   ami                    = data.aws_ami.ubuntu_2404.id
-  instance_type          = "t3.micro"
+  instance_type          = "t3.small"
   subnet_id              = aws_subnet.devsecops_public_subnet.id
   vpc_security_group_ids = [aws_security_group.jenkins_sg.id]
   key_name               = aws_key_pair.devsecops_key.key_name
@@ -80,7 +80,7 @@ resource "aws_instance" "sonarqube" {
 
 resource "aws_instance" "k3s" {
   ami                    = data.aws_ami.ubuntu_2404.id
-  instance_type          = "t3.micro"
+  instance_type          = "t3.small"
   subnet_id              = aws_subnet.devsecops_public_subnet.id
   vpc_security_group_ids = [aws_security_group.k3s_sg.id]
   key_name               = aws_key_pair.devsecops_key.key_name
