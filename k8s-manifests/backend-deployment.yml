@@ -1,0 +1,74 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: proshop-backend
+  namespace: proshop
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: proshop-backend
+  template:
+    metadata:
+      labels:
+        app: proshop-backend
+    spec:
+      containers:
+        - name: proshop-backend
+          image: ashutosh8007/proshop-backend:latest
+          ports:
+            - containerPort: 5000
+          env:
+            - name: PORT
+              value: "5000"
+            - name: MONGO_URI
+              valueFrom:
+                secretKeyRef:
+                  name: proshop-backend-secret
+                  key: MONGO_URI
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: proshop-backend-secret
+                  key: JWT_SECRET
+            - name: PAYPAL_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: proshop-backend-secret
+                  key: PAYPAL_CLIENT_ID
+            - name: PAYPAL_APP_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: proshop-backend-secret
+                  key: PAYPAL_APP_SECRET
+            - name: PAYPAL_API_URL
+              valueFrom:
+                secretKeyRef:
+                  name: proshop-backend-secret
+                  key: PAYPAL_API_URL
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "250m"
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 5000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: proshop-backend-service
+  namespace: proshop
+spec:
+  type: ClusterIP
+  selector:
+    app: proshop-backend
+  ports:
+    - port: 5000
+      targetPort: 5000
