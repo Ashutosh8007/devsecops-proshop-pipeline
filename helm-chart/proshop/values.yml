@@ -1,0 +1,41 @@
+namespace: proshop
+
+backend:
+  image:
+    repository: ashutosh8007/proshop-backend
+    tag: latest
+  replicas: 2
+  port: 5000
+  resources:
+    requests:
+      memory: "128Mi"
+      cpu: "100m"
+    limits:
+      memory: "256Mi"
+      cpu: "250m"
+
+frontend:
+  image:
+    repository: ashutosh8007/proshop-frontend
+    tag: latest
+  replicas: 2
+  port: 80
+  nodePort: 30080
+  resources:
+    requests:
+      memory: "64Mi"
+      cpu: "50m"
+    limits:
+      memory: "128Mi"
+      cpu: "150m"
+
+mongodb:
+  image: mongo:6.0
+  storageSize: 2Gi
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "250m"
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
