@@ -18,7 +18,7 @@ frontend:
   image:
     repository: ashutosh8007/proshop-frontend
     tag: latest
-  replicas: 2
+  replicas: 3
   port: 80
   nodePort: 30080
   resources:
