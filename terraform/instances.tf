@@ -100,3 +100,27 @@ resource "aws_instance" "k3s" {
     Name = "k3s-server"
   }
 }
+
+# ---------- EC2-4: Monitoring (Prometheus + Grafana) ----------
+resource "aws_instance" "monitoring" {
+  ami                    = data.aws_ami.ubuntu_2404.id
+  instance_type          = "t3.small"
+  subnet_id              = aws_subnet.devsecops_public_subnet.id
+  vpc_security_group_ids = [aws_security_group.monitoring_sg.id]
+  key_name               = aws_key_pair.devsecops_key.key_name
+
+  root_block_device {
+    volume_size = 20
+    volume_type = "gp3"
+  }
+
+  user_data = <<-EOF
+              #!/bin/bash
+              apt-get update -y
+              apt-get upgrade -y
+              EOF
+
+  tags = {
+    Name = "monitoring-server"
+  }
+}

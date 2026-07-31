@@ -145,3 +145,53 @@ resource "aws_security_group" "k3s_sg" {
     Name = "k3s-sg"
   }
 }
+
+# ---------- Monitoring Security Group (EC2-4) ----------
+resource "aws_security_group" "monitoring_sg" {
+  name        = "monitoring-sg"
+  description = "Security group for Prometheus and Grafana server"
+  vpc_id      = aws_vpc.devsecops_vpc.id
+
+  ingress {
+    description = "SSH from my IP only"
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = [var.my_ip]
+  }
+
+  ingress {
+    description = "Grafana UI from my IP"
+    from_port   = 3000
+    to_port     = 3000
+    protocol    = "tcp"
+    cidr_blocks = [var.my_ip]
+  }
+
+  ingress {
+    description = "Prometheus UI from my IP"
+    from_port   = 9090
+    to_port     = 9090
+    protocol    = "tcp"
+    cidr_blocks = [var.my_ip]
+  }
+
+  ingress {
+    description     = "Allow Prometheus to scrape k3s metrics"
+    from_port       = 0
+    to_port         = 65535
+    protocol        = "tcp"
+    security_groups = [aws_security_group.k3s_sg.id]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name = "monitoring-sg"
+  }
+}

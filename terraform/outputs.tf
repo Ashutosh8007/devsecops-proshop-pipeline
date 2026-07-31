@@ -31,3 +31,13 @@ output "k3s_private_ip" {
   description = "Private IP of k3s (used for internal communication)"
   value       = aws_instance.k3s.private_ip
 }
+
+output "monitoring_public_ip" {
+  description = "Public IP of the monitoring server"
+  value       = aws_instance.monitoring.public_ip
+}
+
+output "monitoring_private_ip" {
+  description = "Private IP of the monitoring server"
+  value       = aws_instance.monitoring.private_ip
+}
