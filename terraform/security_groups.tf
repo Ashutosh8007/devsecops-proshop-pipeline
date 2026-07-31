@@ -195,3 +195,16 @@ resource "aws_security_group" "monitoring_sg" {
     Name = "monitoring-sg"
   }
 }
+
+# ---------- Cross-referencing rule: monitoring -> k3s NodePorts ----------
+# Defined as a standalone rule (not inline) to avoid a circular dependency
+# between k3s_sg and monitoring_sg, since each references the other.
+resource "aws_security_group_rule" "monitoring_to_k3s_nodeports" {
+  type                     = "ingress"
+  from_port                = 30000
+  to_port                  = 32767
+  protocol                 = "tcp"
+  security_group_id        = aws_security_group.k3s_sg.id
+  source_security_group_id = aws_security_group.monitoring_sg.id
+  description              = "Allow monitoring server to scrape k3s NodePort metrics"
+}
