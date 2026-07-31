@@ -1,0 +1,39 @@
+Started by user admin
+Running in Durability level: MAX_SURVIVABILITY
+[Pipeline] Start of Pipeline
+[Pipeline] node
+Running on Jenkins in /var/jenkins_home/workspace/proshop-pipeline
+[Pipeline] {
+[Pipeline] stage
+[Pipeline] { (Checkout)
++ git clone https://github.com/Ashutosh8007/devsecops-proshop-pipeline.git
+Cloning into 'devsecops-proshop-pipeline'...
+[Pipeline] }
+[Pipeline] stage
+[Pipeline] { (Build)
++ docker build -t ashutosh8007/proshop-backend:latest ./backend
+Successfully built ashutosh8007/proshop-backend:latest
+[Pipeline] }
+[Pipeline] stage
+[Pipeline] { (SonarQube Analysis)
++ sonar-scanner -Dsonar.projectKey=proshop-backend
+INFO: Scanner configuration file: /opt/sonar-scanner/conf/sonar-scanner.properties
+INFO: Project root configuration file: NONE
+INFO: SonarScanner 5.0.1.3006
+INFO: Analyzing on SonarQube server 10.4.1.88267
+INFO: Default locale: "en_US", source code encoding: "UTF-8"
+INFO: Load global settings
+INFO: Load global settings (done) | time=412ms
+ERROR: Error during SonarScanner execution
+ERROR: java.net.SocketTimeoutException: Connect timed out
+ERROR:      at java.base/sun.nio.ch.NioSocketImpl.timedFinishConnect(NioSocketImpl.java:546)
+ERROR:      at java.base/sun.nio.ch.NioSocketImpl.connect(NioSocketImpl.java:592)
+ERROR: Caused by: Unable to connect to SonarQube server at http://10.0.1.108:9000
+ERROR: Connection could not be established after 30000ms
+[Pipeline] }
+[Pipeline] // stage
+[Pipeline] }
+[Pipeline] // node
+[Pipeline] End of Pipeline
+ERROR: script returned exit code 1
+Finished: FAILURE
