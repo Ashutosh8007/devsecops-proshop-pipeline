@@ -1,0 +1,30 @@
+{
+  "receiver": "webhook",
+  "status": "firing",
+  "alerts": [
+    {
+      "status": "firing",
+      "labels": {
+        "alertname": "High Pod Restart Rate",
+        "namespace": "proshop",
+        "pod": "proshop-backend-76b4db888b-rxwm7",
+        "container": "proshop-backend",
+        "severity": "warning"
+      },
+      "annotations": {
+        "description": "Container proshop-backend in pod proshop-backend-76b4db888b-rxwm7 has restarted 4 times in the last 15 minutes."
+      },
+      "startsAt": "2026-07-31T20:12:00Z",
+      "endsAt": "0001-01-01T00:00:00Z",
+      "generatorURL": "http://13.201.92.85:9090/graph?g0.expr=increase%28kube_pod_container_status_restarts_total%5B15m%5D%29"
+    }
+  ],
+  "groupLabels": {
+    "alertname": "High Pod Restart Rate"
+  },
+  "commonLabels": {
+    "alertname": "High Pod Restart Rate",
+    "namespace": "proshop"
+  },
+  "externalURL": "http://13.201.92.85:9093"
+}
