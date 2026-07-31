@@ -1,0 +1,234 @@
+diff --git a/agents/incident-monitoring-agent/README.md b/agents/incident-monitoring-agent/README.md
+new file mode 100644
+index 0000000..fb6c55e
+--- /dev/null
++++ b/agents/incident-monitoring-agent/README.md
+@@ -0,0 +1,29 @@
++# Incident/Monitoring Agent
++
++Reads a Prometheus/Alertmanager webhook payload and uses a local LLM
++(Ollama, llama3.2) via LangChain to translate raw alert labels/annotations
++into a plain-English incident summary with a likely root cause, a concrete
++next diagnostic step, and an impact severity call.
++
++## Why this over just reading the raw alert?
++
++Raw Prometheus alerts are terse label/value pairs — useful for machines,
++slow for humans under time pressure. This agent does the first-pass
++translation a human on-call engineer would otherwise do manually: "what
++does this actually mean, and what should I check first?"
++
++## Usage
++
++```bash
++python3 agent.py <alert-payload.json>
++```
++
++Input matches Prometheus Alertmanager's real webhook JSON schema, so this
++can be wired directly as an Alertmanager receiver in a live pipeline.
++
++## Sample run
++
++Tested against a simulated firing of the real `High Pod Restart Rate`
++alert rule built in Phase 11 — correctly assessed it as low-impact
++(single pod, self-healing) and suggested the right `kubectl describe`
++diagnostic command.
+diff --git a/agents/incident-monitoring-agent/agent.py b/agents/incident-monitoring-agent/agent.py
+new file mode 100644
+index 0000000..b70df47
+--- /dev/null
++++ b/agents/incident-monitoring-agent/agent.py
+@@ -0,0 +1,134 @@
++#!/usr/bin/env python3
++"""
++Incident/Monitoring Agent (LangChain + Ollama)
++--------------------------------------------------
++Reads a Prometheus/Alertmanager webhook payload and uses a local LLM to
++translate raw alert data into a plain-English incident summary with
++likely root cause and suggested next action — the kind of first-pass
++triage a human on-call engineer would otherwise do manually.
++
++Usage:
++    python3 agent.py <alert-payload.json>
++"""
++
++import json
++import sys
++from datetime import datetime, UTC
++
++from langchain_ollama import ChatOllama
++from langchain_core.messages import SystemMessage, HumanMessage
++
++MODEL_NAME = "llama3.2"
++
++
++def load_alert_payload(path):
++    with open(path) as f:
++        return json.load(f)
++
++
++def summarize_alerts(payload):
++    alerts = payload.get("alerts", [])
++    summaries = []
++    for a in alerts:
++        summaries.append({
++            "name": a.get("labels", {}).get("alertname", "unknown"),
++            "status": a.get("status", "unknown"),
++            "severity": a.get("labels", {}).get("severity", "unknown"),
++            "namespace": a.get("labels", {}).get("namespace", "unknown"),
++            "pod": a.get("labels", {}).get("pod", "unknown"),
++            "description": a.get("annotations", {}).get("description", ""),
++            "starts_at": a.get("startsAt", "unknown"),
++        })
++    return summaries
++
++
++def build_llm_prompt(alert_summaries):
++    system_prompt = (
++        "You are an on-call incident triage assistant for a Kubernetes "
++        "platform. You receive raw Prometheus alert data and translate it "
++        "into a plain-English summary a human engineer can quickly act on. "
++        "Suggest a likely root cause and one concrete next diagnostic step. "
++        "Be concise — this is meant to be read in under 15 seconds during "
++        "an active incident."
++    )
++
++    alerts_text = "\n\n".join(
++        f"Alert: {a['name']}\n"
++        f"Status: {a['status']} | Severity: {a['severity']}\n"
++        f"Namespace: {a['namespace']} | Pod: {a['pod']}\n"
++        f"Description: {a['description']}\n"
++        f"Started: {a['starts_at']}"
++        for a in alert_summaries
++    )
++
++    user_prompt = f"""The following alert(s) fired:
++
++{alerts_text}
++
++Write:
++1. A one-sentence plain-English summary of what's happening.
++2. The most likely root cause (1-2 sentences, general Kubernetes knowledge is fine).
++3. One concrete diagnostic command or step the engineer should run next.
++4. A severity call: "IMPACT: LOW" / "IMPACT: MEDIUM" / "IMPACT: HIGH" based on
++   whether this affects a single pod (usually low, since Kubernetes self-heals)
++   vs. a systemic issue.
++"""
++    return system_prompt, user_prompt
++
++
++def run_incident_agent(alert_summaries):
++    llm = ChatOllama(model=MODEL_NAME, temperature=0.2)
++    system_prompt, user_prompt = build_llm_prompt(alert_summaries)
++
++    print(f"\nAsking {MODEL_NAME} to triage the incident... (may take a bit on CPU)\n")
++
++    response = llm.invoke([
++        SystemMessage(content=system_prompt),
++        HumanMessage(content=user_prompt),
++    ])
++    return response.content
++
++
++def write_incident_report(llm_output, out_path="incident-report.md"):
++    lines = [
++        "# Incident Report (AI-assisted)",
++        "",
++        f"**Generated:** {datetime.now(UTC).isoformat()}",
++        f"**Model:** {MODEL_NAME} (via Ollama, local inference)",
++        "",
++        "## AI Analysis",
++        "",
++        llm_output,
++    ]
++    with open(out_path, "w") as f:
++        f.write("\n".join(lines))
++    print(f"Incident report written to {out_path}")
++
++
++def main():
++    if len(sys.argv) < 2:
++        print("Usage: python3 agent.py <alert-payload.json>")
++        sys.exit(1)
++
++    payload = load_alert_payload(sys.argv[1])
++    alert_summaries = summarize_alerts(payload)
++
++    print(f"\n{'='*70}")
++    print(f"INCIDENT/MONITORING AGENT")
++    print(f"Generated: {datetime.now(UTC).isoformat()}")
++    print(f"{'='*70}\n")
++    print(f"Alerts received: {len(alert_summaries)}\n")
++
++    llm_output = run_incident_agent(alert_summaries)
++
++    print("-" * 70)
++    print("INCIDENT ANALYSIS:")
++    print("-" * 70)
++    print(llm_output)
++    print()
++
++    write_incident_report(llm_output)
++
++
++if __name__ == "__main__":
++    main()
+diff --git a/agents/incident-monitoring-agent/incident-report.md b/agents/incident-monitoring-agent/incident-report.md
+new file mode 100644
+index 0000000..c34dd8a
+--- /dev/null
++++ b/agents/incident-monitoring-agent/incident-report.md
+@@ -0,0 +1,16 @@
++# Incident Report (AI-assisted)
++
++**Generated:** 2026-07-31T19:53:39.292997+00:00
++**Model:** llama3.2 (via Ollama, local inference)
++
++## AI Analysis
++
++Here's the response:
++
++**Plain-English Summary:** The proshop-backend pod in namespace proshop has restarted 4 times in the last 15 minutes due to container restarts.
++
++**Likely Root Cause:** This is likely caused by a temporary network or resource issue affecting the pod, such as high CPU usage, memory exhaustion, or a network partition. Kubernetes' self-healing mechanisms are kicking in repeatedly to try and stabilize the pod.
++
++**Next Diagnostic Step:** Run `kubectl describe pod proshop-backend-76b4db888b-rxwm7 --namespace=proshop` to inspect the pod's container logs and resource usage for clues about what might be causing the restarts.
++
++**Severity:** IMPACT: LOW
+\ No newline at end of file
+diff --git a/agents/incident-monitoring-agent/sample-alert-payload.json b/agents/incident-monitoring-agent/sample-alert-payload.json
+new file mode 100644
+index 0000000..0286d33
+--- /dev/null
++++ b/agents/incident-monitoring-agent/sample-alert-payload.json
+@@ -0,0 +1,30 @@
++{
++  "receiver": "webhook",
++  "status": "firing",
++  "alerts": [
++    {
++      "status": "firing",
++      "labels": {
++        "alertname": "High Pod Restart Rate",
++        "namespace": "proshop",
++        "pod": "proshop-backend-76b4db888b-rxwm7",
++        "container": "proshop-backend",
++        "severity": "warning"
++      },
++      "annotations": {
++        "description": "Container proshop-backend in pod proshop-backend-76b4db888b-rxwm7 has restarted 4 times in the last 15 minutes."
++      },
++      "startsAt": "2026-07-31T20:12:00Z",
++      "endsAt": "0001-01-01T00:00:00Z",
++      "generatorURL": "http://13.201.92.85:9090/graph?g0.expr=increase%28kube_pod_container_status_restarts_total%5B15m%5D%29"
++    }
++  ],
++  "groupLabels": {
++    "alertname": "High Pod Restart Rate"
++  },
++  "commonLabels": {
++    "alertname": "High Pod Restart Rate",
++    "namespace": "proshop"
++  },
++  "externalURL": "http://13.201.92.85:9093"
++}
