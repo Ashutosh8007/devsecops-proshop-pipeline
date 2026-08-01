@@ -4,7 +4,7 @@ backend:
   image:
     repository: ashutosh8007/proshop-backend
     tag: latest
-  replicas: 4
+  replicas: 3
   port: 5000
   resources:
     requests:
@@ -18,7 +18,7 @@ frontend:
   image:
     repository: ashutosh8007/proshop-frontend
     tag: latest
-  replicas: 4
+  replicas: 3
   port: 80
   nodePort: 30080
   resources:
